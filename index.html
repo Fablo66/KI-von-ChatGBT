@@ -109,6 +109,9 @@
   <script>
     const chatBox = document.getElementById('chatBox');
 
+    // ⚠️ Trage hier deinen OpenAI API Key ein
+    const API_KEY = 'DEIN_OPENAI_API_KEY';
+
     function addMessage(text, sender) {
       const message = document.createElement('div');
       message.classList.add('message', sender);
@@ -117,50 +120,58 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function aiResponse(input) {
-      input = input.toLowerCase();
+    async function askAI(prompt) {
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            messages: [
+              {
+                role: 'system',
+                content: 'Du bist eine KI die programmieren kann. Wenn der Nutzer nach Code fragt, antworte mit funktionierendem Code.'
+              },
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            temperature: 0.7
+          })
+        });
 
-      if (input.includes('hallo')) {
-        return 'Hallo 😄 Schön dich zu sehen!';
+        const data = await response.json();
+
+        if (data.error) {
+          return 'Fehler: ' + data.error.message;
+        }
+
+        return data.choices[0].message.content;
+      } catch (error) {
+        return 'Verbindungsfehler 🚨';
       }
-
-      if (input.includes('wie geht')) {
-        return 'Mir geht es super 🚀 Und dir?';
-      }
-
-      if (input.includes('name')) {
-        return 'Ich bin deine eigene HTML-KI 🤖';
-      }
-
-      if (input.includes('zeit')) {
-        return 'Die aktuelle Uhrzeit ist: ' + new Date().toLocaleTimeString();
-      }
-
-      const randomAnswers = [
-        'Interessant 🤔',
-        'Erzähl mir mehr!',
-        'Das klingt spannend 😄',
-        'Ich denke darüber nach...',
-        'Kannst du das genauer erklären?'
-      ];
-
-      return randomAnswers[Math.floor(Math.random() * randomAnswers.length)];
     }
 
-    function sendMessage() {
+    async function sendMessage() {
       const input = document.getElementById('userInput');
       const text = input.value.trim();
 
       if (text === '') return;
 
       addMessage(text, 'user');
-
-      setTimeout(() => {
-        const response = aiResponse(text);
-        addMessage(response, 'bot');
-      }, 500);
-
       input.value = '';
+
+      addMessage('KI denkt nach... 🤖', 'bot');
+
+      const loadingMessage = chatBox.lastChild;
+
+      const response = await askAI(text);
+
+      loadingMessage.textContent = response;
     }
 
     document.getElementById('userInput').addEventListener('keypress', function(event) {
